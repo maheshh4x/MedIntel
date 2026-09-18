@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'ADMIN';
+    }
+
+    function isDoctor() {
+      return isAuthenticated() && (getUserRole() == 'DOCTOR' || getUserRole() == 'ADMIN');
+    }
+
+    // User Accounts collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Patient Profiles collection
+    match /patients/{patientId} {
+      allow read: if isOwner(patientId) || isDoctor() || isAdmin();
+      allow create, update: if isOwner(patientId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Doctor Profiles collection
+    match /doctors/{doctorId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isOwner(doctorId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Doctor Availability Schedules collection
+    match /availability/{availabilityId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        request.resource.data.doctorId == request.auth.uid || isAdmin()
+      );
+      allow update, delete: if isAuthenticated() && (
+        resource.data.doctorId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // Appointments collection
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.doctorId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Medical Reports collection
+    match /medicalReports/{reportId} {
+      allow read: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid ||
+        isDoctor() ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && request.resource.data.patientId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (
+        resource.data.patientId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+  }
+}

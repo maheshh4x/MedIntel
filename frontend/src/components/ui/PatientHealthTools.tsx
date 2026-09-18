@@ -1,0 +1,22 @@
+'use client';
+
+import { ChangeEvent, DragEvent, useState } from 'react';
+import { BarChart3, CheckCircle2, FileText, HeartPulse, Upload, X } from 'lucide-react';
+import { Button } from './Button';
+import { DashboardLayout } from '../layout/DashboardLayout';
+import styles from './PatientHealthTools.module.css';
+
+const navItems = [{ label: 'Dashboard', href: '/patient/dashboard' }, { label: 'Appointments', href: '/patient/appointments' }, { label: 'AI Symptom Checker', href: '/patient/ai-symptom-checker' }, { label: 'Medical Reports', href: '/patient/reports' }, { label: 'Health Trends', href: '/patient/trends' }, { label: 'AI Assistant', href: '/patient/assistant' }];
+
+function Reports() {
+  const [reports, setReports] = useState(['Complete blood count.pdf', 'Lipid panel.pdf']); const [uploading, setUploading] = useState(false); const [notice, setNotice] = useState('');
+  const addFile = (file?: File) => { if (!file) return; if (!['application/pdf', 'image/jpeg', 'image/png'].includes(file.type) || file.size > 5_000_000) { setNotice('Please choose a PDF, JPG, or PNG file under 5 MB.'); return; } setUploading(true); setNotice(''); window.setTimeout(() => { setReports((current) => [file.name, ...current]); setUploading(false); setNotice('Report uploaded successfully.'); }, 800); };
+  const onDrop = (event: DragEvent<HTMLDivElement>) => { event.preventDefault(); addFile(event.dataTransfer.files[0]); }; const onChange = (event: ChangeEvent<HTMLInputElement>) => addFile(event.target.files?.[0]);
+  return <div className={styles.toolsPage}><div className={styles.header}><div><p className={styles.eyebrow}>Your health library</p><h1 className={styles.title}>Medical Reports</h1><p className={styles.subtitle}>Upload and organize the documents you want available to your care team.</p></div></div><div className={styles.reportGrid}><div><div className={styles.dropZone} onDragOver={(event) => event.preventDefault()} onDrop={onDrop}><Upload size={27} /><h2>Drop a report here</h2><p>PDF, JPG, or PNG up to 5 MB</p><label className={styles.fileButton}><input type="file" accept="application/pdf,image/jpeg,image/png" onChange={onChange} />Choose a file</label>{uploading && <div className={styles.uploading}><span /> Uploading securely...</div>}{notice && <p className={styles.notice}>{notice}</p>}</div></div><div className={styles.reportList}><div className={styles.listHeading}><h2>Recent reports</h2><span>{reports.length} files</span></div>{reports.map((report) => <div className={styles.reportRow} key={report}><span className={styles.fileIcon}><FileText size={19} /></span><div><strong>{report}</strong><small>Uploaded and encrypted</small></div><Button variant="ghost" size="sm" aria-label={`Remove ${report}`} onClick={() => setReports((current) => current.filter((item) => item !== report))}><X size={16} /></Button></div>)}</div></div></div>;
+}
+
+function Trends() {
+  const points = [62, 70, 66, 76, 72, 84, 80]; return <div className={styles.toolsPage}><div className={styles.header}><div><p className={styles.eyebrow}>Personal insights</p><h1 className={styles.title}>Health Trends</h1><p className={styles.subtitle}>A simple view of your recent readings and wellness patterns.</p></div></div><div className={styles.metricCards}><div><HeartPulse size={19} /><span>Heart rate</span><strong>72 bpm</strong><small>Normal resting average</small></div><div><BarChart3 size={19} /><span>Wellness score</span><strong>86 / 100</strong><small>Up 4 points this month</small></div><div><CheckCircle2 size={19} /><span>Readings logged</span><strong>24</strong><small>Across 3 measurements</small></div></div><section className={styles.chartPanel}><div className={styles.listHeading}><div><h2>Wellness score</h2><p>Last 7 days</p></div><span className={styles.chartLegend}>● Wellness</span></div><div className={styles.chart}>{points.map((point, index) => <div className={styles.barGroup} key={index}><div className={styles.bar} style={{ height: `${point}%` }} /><small>{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][index]}</small></div>)}</div></section></div>;
+}
+
+export function PatientHealthTools({ mode }: { mode: 'reports' | 'trends' }) { return <DashboardLayout navItems={navItems.map((item) => ({ ...item, icon: mode === 'reports' ? <FileText size={20} /> : <BarChart3 size={20} />, active: item.href === `/patient/${mode}` }))} userRole="Patient" userName="Mahesh">{mode === 'reports' ? <Reports /> : <Trends />}</DashboardLayout>; }
